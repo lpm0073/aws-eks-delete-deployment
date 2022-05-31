@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-#
+# Delete a AWS EKS k8s cluster deployment in a namespace, if it exists.
 #
 # see
 #  - https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
@@ -33,11 +33,6 @@ runs:
   steps:
     - uses: actions/checkout@v3
 
-    - name: Setup environment
-      run: |
-        echo "AWS_ECR_REPOSITORY=${{ inputs.aws-ecr-repository }}" >> $GITHUB_ENV
-      shell: bash
-
       # get the Kubernetes kubeconfig for our cluster. This is a prerequisite to getting any other data about or contained within our cluster.
       # see: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
       #
@@ -50,17 +45,17 @@ runs:
         id: kube-config
         run: |-
           sudo snap install kubectl --channel=1.23/stable --classic
-          aws eks --region {{ inputs.aws-eks-region }} update-kubeconfig --name {{ inputs.aws-eks-name }}
+          aws eks --region ${{ inputs.aws-eks-region }} update-kubeconfig --name ${{ inputs.aws-eks-name }}
 
       - name: Set the namespace
         id: get-namespace
         run: |-
-          kubectl config set-context --current --namespace  {{ inputs.aws-eks-namespace }}
+          kubectl config set-context --current --namespace  ${{ inputs.aws-eks-namespace }}
 
       - name: Look for deployment
         id: find-deployment
         run: |-
-          FOUND_DEPLOYMENT=$(kubectl get deployments {{ inputs.aws-eks-deployment }} || echo 'false')
+          FOUND_DEPLOYMENT=$(kubectl get deployments ${{ inputs.aws-eks-deployment }} || echo 'false')
           echo "::set-output name=found::$(echo $FOUND_DEPLOYMENT)"
         shell: bash
 
@@ -68,6 +63,6 @@ runs:
         if: steps.find-deployment.outputs.found != 'false'
         id: delete-deployment
         run: |-
-          echo "deleting deployment ..." {{ inputs.aws-eks-deployment }}
-          kubectl delete deployments {{ inputs.aws-eks-deployment }}
+          echo "deleting deployment for ${{ inputs.aws-eks-namespace }} ${{ inputs.aws-eks-deployment }}"
+          kubectl delete deployments ${{ inputs.aws-eks-deployment }}
 
