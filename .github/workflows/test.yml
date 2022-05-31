@@ -26,7 +26,7 @@ jobs:
       - name: Use the action in this repo to create an AWS ECR repository
         uses: ./
         with:
-          aws-eks-name: xxx
+          aws-eks-name: your-cluster
           aws-eks-region: us-east-2
-          aws-eks-namespace: openedx
-          aws-eks-deployment: lms
+          aws-eks-namespace: your-namespace
+          aws-eks-deployment: your-app

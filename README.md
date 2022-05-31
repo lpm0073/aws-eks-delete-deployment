@@ -32,9 +32,12 @@ jobs:
           aws-region: us-east-2
 
       # This action
-      - name: Create an AWS ECR repository
-        uses: openedx-actions/create-aws-ecr-repository
+      - name: Delete a deployment
+        uses: lpm0073/aws-eks-delete-deployment
         with:
-          aws-ecr-repository: my_new_repo
+          aws-eks-name: your-cluster
+          aws-eks-region: us-east-2
+          aws-eks-namespace: your-namespace
+          aws-eks-deployment: your-app
 
 ```
