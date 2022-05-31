@@ -1,0 +1,73 @@
+#------------------------------------------------------------------------------
+#
+#
+# see
+#  - https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+#  - https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+#
+#------------------------------------------------------------------------------
+name: '"Delete AWS EKS Deployment" Action For GitHub Actions'
+description: 'Delete a deployment from an AWS EKS k8s cluster, if it exists'
+branding:
+  icon: 'cloud'
+  color: 'orange'
+inputs:
+  aws-eks-name:
+    description: 'The name of the AWS EKS cluster'
+    required: true
+  aws-eks-region:
+    description: 'The AWS region in which the AWS EKS cluster is located. Example us-east-1'
+    required: true
+  aws-eks-namespace:
+    description: 'The k8s namespace in which the deployment exists'
+    required: true
+  aws-eks-deployment:
+    description: 'The k8s deployment to delete'
+    required: true
+outputs:
+  aws-eks-deployment-found:
+    description: 'true if the deployment was found and deleted (ie an action was taken), otherwise false.'
+    value: ${{ steps.find-deployment.outputs.found }}
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v1
+
+    - name: Setup environment
+      run: |
+        echo "AWS_ECR_REPOSITORY=${{ inputs.aws-ecr-repository }}" >> $GITHUB_ENV
+      shell: bash
+
+      # get the Kubernetes kubeconfig for our cluster. This is a prerequisite to getting any other data about or contained within our cluster.
+      # see: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+      #
+      # summarizing: the kubeconfig (Kubernetes Configuration) is a text file that contains at a minimum
+      # three values that are necessary in order to access the Kubernetes cluster using kubectl command line:
+      #   - API server endpoint
+      #   - EKS Cluster ARN
+      #   - Certificate authority (ie the private ssh key)
+      - name: Get Kube config
+        id: kube-config
+        run: |-
+          sudo snap install kubectl --channel=1.23/stable --classic
+          aws eks --region {{ inputs.aws-eks-region }} update-kubeconfig --name {{ inputs.aws-eks-name }}
+
+      - name: Set the namespace
+        id: get-namespace
+        run: |-
+          kubectl config set-context --current --namespace  {{ inputs.aws-eks-namespace }}
+
+      - name: Look for deployment
+        id: find-deployment
+        run: |-
+          FOUND_DEPLOYMENT=$(kubectl get deployments {{ inputs.aws-eks-deployment }} || echo 'false')
+          echo "::set-output name=found::$(echo $FOUND_DEPLOYMENT)"
+        shell: bash
+
+      - name: Delete the deployment
+        if: steps.find-deployment.outputs.found != 'false'
+        id: delete-deployment
+        run: |-
+          echo "deleting deployment ..." {{ inputs.aws-eks-deployment }}
+          kubectl delete deployments {{ inputs.aws-eks-deployment }}
+
